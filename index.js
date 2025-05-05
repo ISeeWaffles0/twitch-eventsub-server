@@ -34,6 +34,41 @@ app.post('/webhook', (req, res) => {
     res.sendStatus(204);
   }
 });
+const axios = require('axios');
+
+app.get('/auth/twitch/callback', async (req, res) => {
+  const code = req.query.code;
+
+  if (!code) {
+    return res.status(400).send('Missing code from Twitch');
+  }
+
+  try {
+    const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+      params: {
+        client_id: process.env.TWITCH_CLIENT_ID,
+        client_secret: process.env.TWITCH_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.REDIRECT_URI // Must match your dev console
+      }
+    });
+
+    const { access_token, refresh_token, scope } = response.data;
+
+    console.log('✅ Access Token:', access_token);
+    res.send(`
+      <h2>Success!</h2>
+      <p>Access Token: <code>${access_token}</code></p>
+      <p>Refresh Token: <code>${refresh_token}</code></p>
+      <p>Scopes: ${scope.join(', ')}</p>
+      <p>Store these tokens securely!</p>
+    `);
+  } catch (err) {
+    console.error('❌ Failed to get token:', err.response?.data || err.message);
+    res.status(500).send('Token exchange failed');
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
