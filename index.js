@@ -1,41 +1,45 @@
-// index.js
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ verify: verifyTwitchSignature }));
+// Middleware to verify Twitch signature
+app.use(express.json({
+  verify: (req, res, buf) => {
+    const messageId = req.headers['twitch-eventsub-message-id'];
+    const timestamp = req.headers['twitch-eventsub-message-timestamp'];
+    const signature = req.headers['twitch-eventsub-message-signature'];
+    const secret = process.env.TWITCH_SECRET;
 
-function verifyTwitchSignature(req, res, buf) {
-  const messageId = req.headers['twitch-eventsub-message-id'];
-  const timestamp = req.headers['twitch-eventsub-message-timestamp'];
-  const signature = req.headers['twitch-eventsub-message-signature'];
-  const secret = process.env.TWITCH_SECRET;
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(messageId + timestamp + buf);
+    const expected = `sha256=${hmac.digest('hex')}`;
 
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(messageId + timestamp + buf);
-  const expected = `sha256=${hmac.digest('hex')}`;
-
-  if (signature !== expected) {
-    throw new Error('Invalid signature');
+    req.validTwitchSignature = signature === expected;
   }
-}
+}));
 
+// Twitch EventSub webhook endpoint
 app.post('/webhook', (req, res) => {
+  if (!req.validTwitchSignature) {
+    return res.status(403).send('Invalid signature');
+  }
+
   const { type } = req.body.subscription;
   const messageType = req.headers['twitch-eventsub-message-type'];
 
   if (messageType === 'webhook_callback_verification') {
-    res.status(200).send(req.body.challenge);
-  } else {
-    console.log(`🔔 Event Received: ${type}`);
-    res.sendStatus(204);
+    return res.status(200).send(req.body.challenge);
   }
-});
-const axios = require('axios');
 
+  console.log(`🔔 Event Received: ${type}`);
+  res.sendStatus(204);
+});
+
+// OAuth2 redirect handler
 app.get('/auth/twitch/callback', async (req, res) => {
   const code = req.query.code;
 
@@ -50,7 +54,7 @@ app.get('/auth/twitch/callback', async (req, res) => {
         client_secret: process.env.TWITCH_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: process.env.REDIRECT_URI // Must match your dev console
+        redirect_uri: process.env.REDIRECT_URI
       }
     });
 
@@ -69,9 +73,13 @@ app.get('/auth/twitch/callback', async (req, res) => {
     res.status(500).send('Token exchange failed');
   }
 });
+
+// Root endpoint
 app.get('/', (req, res) => {
-  res.send('✅ Twitch EventSub server is running!');
+  res.send('✅ Twitch EventSub server is running on Railway!');
 });
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
