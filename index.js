@@ -69,7 +69,9 @@ app.get('/auth/twitch/callback', async (req, res) => {
     res.status(500).send('Token exchange failed');
   }
 });
-
+app.get('/', (req, res) => {
+  res.send('✅ Twitch EventSub server is running!');
+});
 app.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
