@@ -9,6 +9,29 @@ const CALLBACK_URL = process.env.WEBHOOK_CALLBACK;
 const WEBHOOK_SECRET = process.env.TWITCH_SECRET;
 const USER_ID = process.env.TWITCH_USER_ID; // broadcaster's Twitch user ID
 
+// Add this before registerWebhook()
+async function verifyTokenOwner() {
+  const res = await fetch('https://api.twitch.tv/helix/users', {
+    headers: {
+      'Client-ID': CLIENT_ID,
+      'Authorization': `Bearer ${ACCESS_TOKEN}`
+    }
+  });
+
+  const data = await res.json();
+  const tokenUserId = data.data?.[0]?.id;
+  const tokenLogin = data.data?.[0]?.login;
+
+  console.log(`🔍 Token belongs to: ${tokenLogin} (ID: ${tokenUserId})`);
+  console.log(`📌 Target broadcaster_user_id: ${USER_ID}`);
+
+  if (tokenUserId !== USER_ID) {
+    console.error('❌ Mismatch: The token does not belong to the specified broadcaster_user_id.');
+    return false;
+  }
+
+  return true;
+}
 // Function to register EventSub webhook for channel.follow
 async function registerWebhook() {
   try {
