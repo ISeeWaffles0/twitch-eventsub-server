@@ -43,7 +43,7 @@ async function registerWebhook() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        type: 'channel.follow',
+        type: 'channel.subscription.message',
         version: '1',
         condition: {
           broadcaster_user_id: USER_ID
