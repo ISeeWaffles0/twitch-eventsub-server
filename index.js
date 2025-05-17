@@ -6,6 +6,8 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+let isLive = false; // <-- TRACK STREAM STATUS HERE
+
 // Middleware to verify Twitch signature
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -22,24 +24,44 @@ app.use(express.json({
   }
 }));
 
-// Twitch EventSub webhook endpoint
+// ✅ Combined Webhook Handler
 app.post('/webhook', (req, res) => {
   if (!req.validTwitchSignature) {
     return res.status(403).send('Invalid signature');
   }
 
-  const { type } = req.body.subscription;
   const messageType = req.headers['twitch-eventsub-message-type'];
+  const { type } = req.body.subscription;
+  const event = req.body.event;
 
   if (messageType === 'webhook_callback_verification') {
     return res.status(200).send(req.body.challenge);
   }
 
-  console.log(`🔔 Event Received: ${type}`);
+  if (messageType === 'notification') {
+    console.log(`🔔 Event Received: ${type}`);
+
+    if (type === 'stream.online') {
+      isLive = true;
+      console.log('✅ Stream is now live');
+    }
+
+    if (type === 'stream.offline') {
+      isLive = false;
+      console.log('🔕 Stream is now offline');
+    }
+  }
+
   res.sendStatus(204);
 });
 
-// OAuth2 redirect handler
+// ✅ ESP32 polling route
+app.get('/status', (req, res) => {
+  console.log('📶 ESP32 requested status:', isLive);
+  res.json({ live: isLive });
+});
+
+// ✅ Twitch OAuth Callback
 app.get('/auth/twitch/callback', async (req, res) => {
   const code = req.query.code;
 
@@ -74,12 +96,12 @@ app.get('/auth/twitch/callback', async (req, res) => {
   }
 });
 
-// Root endpoint
+// Root route
 app.get('/', (req, res) => {
   res.send('✅ Twitch EventSub server is running on Railway!');
 });
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
