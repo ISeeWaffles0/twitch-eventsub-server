@@ -7,6 +7,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 let isLive = false; // <-- TRACK STREAM STATUS HERE
+let streamBits = 0;
+let streamSubs = 0;
 
 // Middleware to verify Twitch signature
 app.use(express.json({
@@ -43,12 +45,25 @@ app.post('/', (req, res) => {
 
     if (type === 'stream.online') {
       isLive = true;
-      console.log('✅ Stream is now live');
+      streamBits = 0;
+      streamSubs = 0;
+      console.log('Stream is now live');
+      console.log('Stream counters reset');
     }
 
     if (type === 'stream.offline') {
       isLive = false;
       console.log('🔕 Stream is now offline');
+    }
+
+    if (type === 'channel.cheer') {
+      const bits = event.bits || 0;
+      streamBits += bits;
+      console.log('+${bits} bits (total: ${streamBits})');
+    }
+    if (type === 'channel.subscribe' || type === 'channel.subscription.gift') {
+      streamSubs++;
+      console.log('+1 sub (total: ${streamSubs})');
     }
   }
 
@@ -58,7 +73,11 @@ app.post('/', (req, res) => {
 // ✅ ESP32 polling route
 app.get('/status', (req, res) => {
   console.log('📶 ESP32 requested status:', isLive);
-  res.json({ live: isLive });
+  res.json({
+    live: isLive
+    bits: streamBits,
+    subs: streamSubs
+  });
 });
 
 // ✅ Twitch OAuth Callback
