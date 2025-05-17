@@ -75,7 +75,7 @@ if (type === 'stream.offline') {
 app.get('/status', (req, res) => {
   console.log('📶 ESP32 requested status:', isLive);
   res.json({
-    live: isLive
+    live: isLive,
     bits: streamBits,
     subs: streamSubs
   });
