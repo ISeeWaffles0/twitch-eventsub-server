@@ -25,7 +25,7 @@ app.use(express.json({
 }));
 
 // ✅ Combined Webhook Handler
-app.post('/webhook', (req, res) => {
+app.post('/', (req, res) => {
   if (!req.validTwitchSignature) {
     return res.status(403).send('Invalid signature');
   }
