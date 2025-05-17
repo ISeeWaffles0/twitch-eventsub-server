@@ -44,27 +44,28 @@ app.post('/', (req, res) => {
     console.log(`🔔 Event Received: ${type}`);
 
     if (type === 'stream.online') {
-      isLive = true;
-      streamBits = 0;
-      streamSubs = 0;
-      console.log('Stream is now live');
-      console.log('Stream counters reset');
-    }
+  isLive = true;
+  streamBits = 0;
+  streamSubs = 0;
+  console.log('✅ Stream started. Counters reset.');
+}
 
-    if (type === 'stream.offline') {
-      isLive = false;
-      console.log('🔕 Stream is now offline');
-    }
+if (type === 'channel.cheer') {
+  const bits = event.bits || 0;
+  streamBits += bits;
+  console.log(`💰 +${bits} bits (total: ${streamBits})`);
+}
 
-    if (type === 'channel.cheer') {
-      const bits = event.bits || 0;
-      streamBits += bits;
-      console.log('+${bits} bits (total: ${streamBits})');
-    }
-    if (type === 'channel.subscribe' || type === 'channel.subscription.gift') {
-      streamSubs++;
-      console.log('+1 sub (total: ${streamSubs})');
-    }
+if (type === 'channel.subscribe' || type === 'channel.subscription.gift') {
+  streamSubs++;
+  console.log(`🎉 +1 sub (total: ${streamSubs})`);
+}
+
+if (type === 'stream.offline') {
+  isLive = false;
+  console.log('🔕 Stream ended.');
+}
+
   }
 
   res.sendStatus(204);
